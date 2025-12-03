@@ -5,7 +5,9 @@ This repository provides tools and modules for calibrating the linear actuators 
 ## Repository Structure
 
 ├── launch/ # Launch files (ROS integration or experiment launching)
+
 ├── linear_actuator_calibration/ # Main Python package with calibration code
+
 ├── resource/ # Resource files (configuration templates, calibration data)
 ├── test/ # Test scripts and validation tools
 ├── setup.py # Python installation script
