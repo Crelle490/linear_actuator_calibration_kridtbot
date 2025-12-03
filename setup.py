@@ -20,8 +20,8 @@ setup(
     zip_safe=True,
     maintainer='ingolf',
     maintainer_email='christian.clt@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Linear Actuator Calibration Package for the Kridtobt mobile robot',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
