@@ -1,7 +1,7 @@
 # linear_actuator_calibration_kridtbot
 [![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Crelle490/linear_actuator_calibration_kridtbot/tree/main)
 
-This ROS 2 package provides a node for the automatic calibration of linear actuators on the Kridtbot mobile robot. The calibration routine determines the physical limits of the actuators by monitoring joint effort (torque) and establishes a new zero reference position for each actuator.
+This ROS 2 package provides a node for the automatic calibration of linear actuators on the Kridtbot mobile robot. The calibration routine determines the physical limits of the actuators by monitoring joint effort (torque) and establishes a new zero reference position for each actuator
 
 ## Prerequisites
 
