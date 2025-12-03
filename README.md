@@ -9,11 +9,17 @@ This repository provides tools and modules for calibrating the linear actuators 
 ├── linear_actuator_calibration/ # Main Python package with calibration code
 
 ├── resource/ # Resource files (configuration templates, calibration data)
+
 ├── test/ # Test scripts and validation tools
+
 ├── setup.py # Python installation script
+
 ├── setup.cfg # Package metadata configuration
+
 ├── package.xml # ROS package manifest (if used in a ROS workspace)
+
 ├── LICENSE.md # License information (Apache 2.0)
+
 └── README.md # Project documentation
 
 
