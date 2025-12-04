@@ -2,6 +2,9 @@
 
 This package provides a ROS 2 node that automatically calibrates the four linear actuators on the Kridtbot mobile robot. During startup it retracts each actuator until it detects the hard stop via torque (effort) feedback, records that position as the relative zero, and switches the robot over to position control so the actuators can be driven from a known reference.
 
+See [AUTHORS.md](AUTHORS.md) for full credits.
+
+
 ## Features
 - Calibrates `left_front_linear`, `left_rear_linear`, `right_front_linear`, and `right_rear_linear` actuators in one pass.
 - Monitors `joint_states` for effort data to detect end-stops and capture a per-joint zero offset.
