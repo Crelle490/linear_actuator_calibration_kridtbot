@@ -1,0 +1,178 @@
+diff --git a/README.md b/README.md
+index a993b47daf598b95b2e86bf5d0f765c0a8cf3c67..a05823426e334fe4eed0182fe4e3f9adeedba24d 100644
+--- a/README.md
++++ b/README.md
+@@ -1,78 +1,107 @@
+-# linear_actuator_calibration_kridtbot
+-[![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Crelle490/linear_actuator_calibration_kridtbot/tree/main)
++# Linear Actuator Calibration for Kridtbot
+ 
+-This ROS 2 package provides a node for the automatic calibration of linear actuators on the Kridtbot mobile robot. The calibration routine determines the physical limits of the actuators by monitoring joint effort (torque) and establishes a new zero reference position for each actuator
++This package provides a ROS 2 node that automatically calibrates the four linear actuators on the Kridtbot mobile robot. During startup it retracts each actuator until it detects the hard stop via torque (effort) feedback, records that position as the relative zero, and switches the robot over to position control so the actuators can be driven from a known reference.
+ 
+-## Prerequisites
+-
+-*   ROS 2
+-*   `ros2_control` framework configured on the robot.
+-*   A `joint_state_broadcaster` publishing the states of the target joints.
+-*   Configured `linear_velocity_controller` and `linear_position_control` controllers under a `controller_manager`.
+-
+-## Installation
+-
+-1.  Clone this repository into the `src` directory of your ROS 2 workspace:
+-    ```bash
+-    cd your_ros2_ws/src
+-    git clone https://github.com/Crelle490/linear_actuator_calibration_kridtbot.git
+-    ```
+-
+-2.  Navigate to your workspace root and install dependencies:
+-    ```bash
+-    cd ..
+-    rosdep install --from-paths src --ignore-src -r -y
+-    ```
+-
+-3.  Build the package:
+-    ```bash
+-    colcon build --packages-select linear_actuator_calibration
+-    ```
+-
+-## Usage
+-
+-1.  Source your ROS 2 workspace:
+-    ```bash
+-    source install/setup.bash
+-    ```
++## Features
++- Calibrates `left_front_linear`, `left_rear_linear`, `right_front_linear`, and `right_rear_linear` actuators in one pass.
++- Monitors `joint_states` for effort data to detect end-stops and capture a per-joint zero offset.
++- Publishes velocity commands to `linear_velocity_controller/commands` for the search phase, then switches to `linear_position_control/commands` for post-calibration positioning.
++- Automatically calls `/controller_manager/switch_controller` to deactivate the velocity controller and activate the position controller when calibration completes.
+ 
+-2.  Launch the calibration sequence:
+-    ```bash
+-    ros2 launch linear_actuator_calibration calibration.launch.py
+-    ```
+-    This will start the `calibration_sequence` node, which executes the entire calibration process and shuts down upon completion.
++## Node Overview
++| Node | Subscriptions | Publications | Services | Purpose |
++| --- | --- | --- | --- | --- |
++| `calibration_sequence` | `joint_states` (`sensor_msgs/JointState`) | `linear_velocity_controller/commands` and `linear_position_control/commands` (`std_msgs/Float64MultiArray`) | `/controller_manager/switch_controller` (`controller_manager_msgs/srv/SwitchController`) | Drives the calibration routine and transitions controllers. |
+ 
+-## Calibration Process
++Key runtime constants:
++- End-stop detection threshold: absolute effort > `0.20` Nm marks a stop for that joint.
++- Search velocity: `-6.0 * 0.005 / (2 * π)` revolutions per message cycle while seeking an end-stop.
++- Post-switch position target: current relative zero plus `0.01` revolutions to move slightly off the hard stop.
+ 
+-The `calibration_sequence` node performs the following steps to calibrate the four linear actuators (`left_front_linear`, `left_rear_linear`, `right_front_linear`, `right_rear_linear`):
+-
+-1.  **Initiation**: The node starts by sending negative velocity commands to the `linear_velocity_controller/commands` topic, causing the actuators to retract towards their physical limits.
+-
+-2.  **End-Stop Detection**: While the actuators are moving, the node subscribes to the `/joint_states` topic and monitors the `effort` field for each actuator.
+-
+-3.  **Zeroing**: When an actuator's effort exceeds a threshold of `0.20`, the node concludes it has reached its physical end-stop. It records the current joint `position` as the calibrated relative zero position for that actuator.
+-
+-4.  **Controller Switch**: After all four actuators have been successfully zeroed, the node calls the `/controller_manager/switch_controller` service. It deactivates the `linear_velocity_controller` and activates the `linear_position_control` controller.
+-
+-5.  **Finalization**: Upon a successful controller switch, the node publishes a final target position to the `linear_position_control/commands` topic to move the actuators to a known starting state relative to their newly found zero points. The node then destroys itself, completing the calibration.
++## Prerequisites
++- ROS 2 (compatible with `ament_python` packages).
++- A `ros2_control` setup that exposes:
++  - `joint_states` from a `joint_state_broadcaster` covering the four linear joints.
++  - A `linear_velocity_controller` accepting `Float64MultiArray` commands for all four actuators.
++  - A `linear_position_control` accepting the same command type.
++- `controller_manager` available at `/controller_manager/switch_controller` to swap controllers.
+ 
+-## Package Structure
++Runtime dependencies are declared in `package.xml` (`rclpy`, `sensor_msgs`, `std_msgs`, `controller_manager_msgs`, `numpy`, `ros2launch`).
+ 
++## Installation
++1. Clone the repository into your ROS 2 workspace `src` folder:
++   ```bash
++   cd your_ros2_ws/src
++   git clone https://github.com/Crelle490/linear_actuator_calibration_kridtbot.git
++   ```
++2. Install package dependencies from the workspace root:
++   ```bash
++   cd ..
++   rosdep install --from-paths src --ignore-src -r -y
++   ```
++3. Build the package:
++   ```bash
++   colcon build --packages-select linear_actuator_calibration
++   ```
++
++## Running the Calibration
++1. Source the workspace:
++   ```bash
++   source install/setup.bash
++   ```
++2. Ensure the velocity controller is running (for example with `ros2 control list_controllers`).
++3. Launch the node:
++   ```bash
++   ros2 launch linear_actuator_calibration calibration.launch.py
++   ```
++   The launch file starts the `calibration_sequence` executable from this package.
++4. Observe log output in the terminal; the node reports each joint’s effort and when a hard stop is detected.
++
++## Calibration Algorithm
++1. Subscribe to `joint_states` and identify indices for the four linear actuators.
++2. Continuously publish negative velocity commands to drive actuators toward their retracted limits while monitoring effort.
++3. When a joint’s absolute effort exceeds `0.20`, record its current position as the calibrated relative zero, flag the joint as calibrated, and stop commanding motion for that joint.
++4. After all joints are calibrated, call `/controller_manager/switch_controller` to deactivate `linear_velocity_controller` and activate `linear_position_control`.
++5. Once the switch succeeds, publish a small positive position offset so each actuator moves off the hard stop and confirm calibration completion before shutting the node down.
++
++## Topics and Interfaces
++- **Subscribed**: `joint_states` (`sensor_msgs/JointState`) – must include all four linear joint names.
++- **Published**:
++  - `linear_velocity_controller/commands` (`std_msgs/Float64MultiArray`) – velocity vector sent during end-stop search.
++  - `linear_position_control/commands` (`std_msgs/Float64MultiArray`) – position targets published after controller switch.
++- **Service Client**: `/controller_manager/switch_controller` (`controller_manager_msgs/srv/SwitchController`) – activates position control and deactivates velocity control.
++
++## Enforcing README Changes
++Follow the steps below whenever you update this README to ensure downstream users pick up the latest instructions:
++
++1. **Regenerate documentation** (if you publish docs elsewhere) so the new README content is included.
++2. **Commit the changes** to version control to make them part of the repository history:
++   ```bash
++   git add README.md
++   git commit -m "Update README"
++   git push
++   ```
++3. **Communicate the update** to your team or deployment pipeline. If your deployment consumes the README (for example, for ops runbooks), trigger a new build or release so the updated text is available wherever it is read.
++4. **Verify** by reopening the README from the default branch (e.g., via GitHub or your package registry) to confirm the rendered content matches your expectations.
++
++## Development and Testing
++- Linting tests are provided under `test/` (flake8 and PEP 257) and can be run via:
++  ```bash
++  colcon test --packages-select linear_actuator_calibration
++  ```
++  Ensure the workspace is built first so entry points are available.
++
++## Repository Layout
+ ```
+ .
+-├── LICENSE.md                  # Apache 2.0 License
+-├── README.md                   # This documentation file
+-├── launch/
+-│   └── calibration.launch.py   # ROS 2 launch file to start the calibration node
+-├── linear_actuator_calibration/
+-│   └── calibration_sequence.py # Python source for the calibration ROS 2 node
+-├── package.xml                 # ROS 2 package manifest
+-├── resource/                     # ament resource index marker
+-├── setup.cfg                   # Python package install configuration
+-├── setup.py                    # Python setup script with console entry points
+-└── test/                       # Linters and copyright tests
++├── launch/                      # Launch file to start the calibration node
++├── linear_actuator_calibration/ # Python package containing the node implementation
++├── resource/                    # ament resource index marker
++├── test/                        # Linting tests for ROS 2 conventions
++├── package.xml                  # ROS 2 package manifest and dependencies
++├── setup.py                     # ament_python configuration and console entry points
++└── LICENSE.md                   # Apache 2.0 license
+ ```
+ 
+ ## License
+-
+-This project is licensed under the Apache 2.0 License. See the [LICENSE.md](LICENSE.md) file for details.
++This project is licensed under the Apache 2.0 License. See [LICENSE.md](LICENSE.md) for details.
